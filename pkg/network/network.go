@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -89,6 +90,9 @@ const (
 	// Istio with mTLS rewrites probes, but their probes pass a different
 	// user-agent.  So we augment the probes with this header.
 	KubeletProbeHeaderName = "K-Kubelet-Probe"
+
+	// prometheusUAPrefix defines a user agent prefix used by Prometheus. Refer to https://github.com/prometheus/prometheus/blob/master/scrape/scrape.go
+	prometheusUAPrefix = "Prometheus/"
 
 	// DefaultConnTimeout specifies a short default connection timeout
 	// to avoid hitting the issue fixed in
@@ -337,7 +341,13 @@ func checkTagTemplate(t *template.Template) error {
 // IsKubeletProbe returns true if the request is a Kubernetes probe.
 func IsKubeletProbe(r *http.Request) bool {
 	return strings.HasPrefix(r.Header.Get("User-Agent"), KubeProbeUAPrefix) ||
-		r.Header.Get(KubeletProbeHeaderName) != ""
+		r.Header.Get(KubeletProbeHeaderName) != "" || isScrapeRequestOfPrometheus(r)
+}
+
+// isScrapeRequestOfPrometheus returns true if the request came from Prometheus.
+func isScrapeRequestOfPrometheus(r *http.Request) bool {
+	fmt.Fprintf(os.Stderr, "isScrape!: %s %s\n", r.Header.Get("User-Agent"), prometheusUAPrefix)
+	return strings.HasPrefix(r.Header.Get("User-Agent"), prometheusUAPrefix)
 }
 
 // KnativeProbeHeader returns the value for key ProbeHeaderName in request headers.

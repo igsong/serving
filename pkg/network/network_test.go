@@ -18,6 +18,7 @@ package network
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -635,6 +636,25 @@ func TestIsKubeletProbe(t *testing.T) {
 	req.Header.Set(KubeletProbeHeaderName, "no matter")
 	if !IsKubeletProbe(req) {
 		t.Error("kubelet probe but not counted as such")
+	}
+}
+
+func TestIsScrapeRequestOfPrometheus(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	fmt.Printf("Wow\n")
+	if err != nil {
+		t.Fatalf("Error building request: %v", err)
+	}
+	if isScrapeRequestOfPrometheus(req) {
+		t.Error("Not a request from prometheus but counted as such")
+	}
+	req.Header.Set("User-Agent", prometheusUAPrefix+"1.0")
+	if !isScrapeRequestOfPrometheus(req) {
+		t.Error("A request from prometheus but not counted as such")
+	}
+	req.Header.Del("User-Agent")
+	if isScrapeRequestOfPrometheus(req) {
+		t.Error("Not a request from prometheus but counted as such")
 	}
 }
 

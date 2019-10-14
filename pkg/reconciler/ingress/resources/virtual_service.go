@@ -169,6 +169,41 @@ func makeVirtualServiceSpec(ia v1alpha1.IngressAccessor, gateways map[v1alpha1.I
 		Hosts:    hosts.List(),
 	}
 
+	exposed_hosts := sets.NewString()
+
+	for _, rule := range ia.GetSpec().Rules {
+		hosts := hosts.Intersection(sets.NewString(rule.Hosts...))
+		if hosts.Len() != 0 {
+			hostList := hosts.List()
+			if strings.HasPrefix(hostList[0], ia.GetName()) {
+				exposed_hosts.Insert(hostList...)
+			}
+		}
+	}
+
+	for _, rule := range ia.GetSpec().Rules {
+		for _, p := range rule.HTTP.Paths {
+			hosts := hosts.Intersection(sets.NewString(rule.Hosts...))
+			if hosts.Len() != 0 {
+				hostList := hosts.List()
+				if !strings.HasPrefix(hostList[0], ia.GetName()) {
+					s := strings.SplitN(hostList[0], ".", 2)
+					tag := strings.TrimSuffix(s[0], "-"+ia.GetName())
+
+					httpRoute := makeVirtualServiceRoute(exposed_hosts, &p, gateways[rule.Visibility])
+					for i, _ := range httpRoute.Match {
+						httpRoute.Match[i].Headers = map[string]istiov1alpha1.StringMatch{
+							"X-K-Routing-Tag": istiov1alpha1.StringMatch{
+								Exact: tag,
+							},
+						}
+					}
+					spec.HTTP = append(spec.HTTP, *httpRoute)
+				}
+			}
+		}
+	}
+
 	for _, rule := range ia.GetSpec().Rules {
 		for _, p := range rule.HTTP.Paths {
 			hosts := hosts.Intersection(sets.NewString(rule.Hosts...))

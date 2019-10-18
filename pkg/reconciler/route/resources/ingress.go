@@ -38,6 +38,14 @@ import (
 	"knative.dev/serving/pkg/resources"
 )
 
+const (
+	// RevisionHeaderTag is the header name specifying a tag name corresponding to the routh path which is used for the HTTP request
+	RevisionHeaderTag = "Knative-Serving-Tag"
+
+	// RouteWithTagHeaderAnnotationKey is the annotation key specifying if the service will be routed by a tag header or not.
+	RouteWithTagHeaderAnnotationKey = "networking.knative.dev/routeWithTagHeader"
+)
+
 // MakeIngressTLS creates IngressTLS to configure the ingress TLS.
 func MakeIngressTLS(cert *v1alpha1.Certificate, hostNames []string) v1alpha1.IngressTLS {
 	return v1alpha1.IngressTLS{
@@ -97,6 +105,8 @@ func MakeIngressSpec(
 	// Sort the names to give things a deterministic ordering.
 	sort.Strings(names)
 
+	defaultTargetRuleIndex := -1
+
 	// The routes are matching rule based on domain name to traffic split targets.
 	rules := make([]v1alpha1.IngressRule, 0, len(names))
 	for _, name := range names {
@@ -112,8 +122,33 @@ func MakeIngressSpec(
 			return v1alpha1.IngressSpec{}, err
 		}
 
+		if name == traffic.DefaultTarget {
+			defaultTargetRuleIndex = len(rules)
+		}
+
 		rules = append(rules, *makeIngressRule(
 			routeDomains, r.Namespace, isClusterLocal, targets[name]))
+	}
+
+	for idx := range rules {
+		if idx != defaultTargetRuleIndex {
+			rules[idx].HTTP.Paths[0].AppendHeaders = map[string]string{
+				RevisionHeaderTag: names[idx],
+			}
+		}
+	}
+
+	if needsRouteWithTagHeader, ok := r.GetAnnotations()[RouteWithTagHeaderAnnotationKey]; ok && defaultTargetRuleIndex != -1 && needsRouteWithTagHeader == "true" {
+		tagBasedPaths := []v1alpha1.HTTPIngressPath{}
+		for idx := range rules {
+			if idx != defaultTargetRuleIndex {
+				tagBasedPath := rules[idx].HTTP.Paths[0].DeepCopy()
+				tagBasedPath.AppendHeaders = nil
+				tagBasedPath.Headers = map[string]string{RevisionHeaderTag: names[idx]}
+				tagBasedPaths = append(tagBasedPaths, *tagBasedPath)
+			}
+		}
+		rules[defaultTargetRuleIndex].HTTP.Paths = append(tagBasedPaths, rules[defaultTargetRuleIndex].HTTP.Paths...)
 	}
 
 	defaultDomain, err := domains.HostnameFromTemplate(ctx, r.Name, "")

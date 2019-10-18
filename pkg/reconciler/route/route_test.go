@@ -623,6 +623,9 @@ func TestCreateRouteWithDuplicateTargets(t *testing.T) {
 			},
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "test-revision-1",
+					},
 					Splits: []netv1alpha1.IngressBackendSplit{{
 						IngressBackend: netv1alpha1.IngressBackend{
 							ServiceNamespace: testNamespace,
@@ -645,6 +648,9 @@ func TestCreateRouteWithDuplicateTargets(t *testing.T) {
 			},
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "test-revision-2",
+					},
 					Splits: []netv1alpha1.IngressBackendSplit{{
 						IngressBackend: netv1alpha1.IngressBackend{
 							ServiceNamespace: testNamespace,
@@ -756,6 +762,9 @@ func TestCreateRouteWithNamedTargets(t *testing.T) {
 			},
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "bar",
+					},
 					Splits: []netv1alpha1.IngressBackendSplit{{
 						IngressBackend: netv1alpha1.IngressBackend{
 							ServiceNamespace: testNamespace,
@@ -778,6 +787,186 @@ func TestCreateRouteWithNamedTargets(t *testing.T) {
 			},
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "foo",
+					},
+					Splits: []netv1alpha1.IngressBackendSplit{{
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      rev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 100,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  rev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}},
+				}},
+			},
+			Visibility: netv1alpha1.IngressVisibilityExternalIP,
+		}},
+	}
+
+	if diff := cmp.Diff(expectedSpec, ci.Spec); diff != "" {
+		fmt.Printf("%+v\n", ci.Spec)
+		t.Errorf("Unexpected rule spec diff (-want +got): %v", diff)
+	}
+}
+
+func TestCreateRouteWithNamedTargetsAndTagBasedRouteAnnotation(t *testing.T) {
+	ctx, _, reconciler, _, cf := newTestReconciler(t)
+	defer cf()
+	// A standalone revision
+	rev := getTestRevision("test-rev")
+	fakeservingclient.Get(ctx).ServingV1alpha1().Revisions(testNamespace).Create(rev)
+	fakerevisioninformer.Get(ctx).Informer().GetIndexer().Add(rev)
+
+	// A configuration and associated revision. Normally the revision would be
+	// created by the configuration reconciler.
+	config := getTestConfiguration()
+	cfgrev := getTestRevisionForConfig(config)
+	config.Status.SetLatestCreatedRevisionName(cfgrev.Name)
+	config.Status.SetLatestReadyRevisionName(cfgrev.Name)
+	fakeservingclient.Get(ctx).ServingV1alpha1().Configurations(testNamespace).Create(config)
+	// Since Reconcile looks in the lister, we need to add it to the informer
+	fakecfginformer.Get(ctx).Informer().GetIndexer().Add(config)
+	fakeservingclient.Get(ctx).ServingV1alpha1().Revisions(testNamespace).Create(cfgrev)
+	fakerevisioninformer.Get(ctx).Informer().GetIndexer().Add(cfgrev)
+
+	// A route targeting both the config and standalone revision with named
+	// targets
+	route := getTestRouteWithTrafficTargets(WithSpecTraffic(v1alpha1.TrafficTarget{
+		TrafficTarget: v1.TrafficTarget{
+			Tag:          "foo",
+			RevisionName: "test-rev",
+			Percent:      ptr.Int64(50),
+		},
+	}, v1alpha1.TrafficTarget{
+		TrafficTarget: v1.TrafficTarget{
+			Tag:               "bar",
+			ConfigurationName: "test-config",
+			Percent:           ptr.Int64(50),
+		},
+	}))
+
+	if route.GetAnnotations() == nil {
+		route.SetAnnotations(make(map[string]string))
+	}
+
+	route.GetAnnotations()["networking.knative.dev/routeWithTagHeader"] = "true"
+
+	fakeservingclient.Get(ctx).ServingV1alpha1().Routes(testNamespace).Create(route)
+	// Since Reconcile looks in the lister, we need to add it to the informer
+	fakerouteinformer.Get(ctx).Informer().GetIndexer().Add(route)
+
+	reconciler.Reconcile(context.Background(), KeyOrDie(route))
+
+	ci := getRouteIngressFromClient(ctx, t, route)
+	domain := strings.Join([]string{route.Name, route.Namespace, defaultDomainSuffix}, ".")
+	expectedSpec := netv1alpha1.IngressSpec{
+		Visibility: netv1alpha1.IngressVisibilityExternalIP,
+		TLS:        []netv1alpha1.IngressTLS{},
+		Rules: []netv1alpha1.IngressRule{{
+			Hosts: []string{
+				"test-route.test.svc.cluster.local",
+				domain,
+			},
+			HTTP: &netv1alpha1.HTTPIngressRuleValue{
+				Paths: []netv1alpha1.HTTPIngressPath{{
+					Headers: map[string]string{
+						"Knative-Serving-Tag": "bar",
+					},
+					Splits: []netv1alpha1.IngressBackendSplit{{
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      cfgrev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 100,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  cfgrev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}},
+				}, {
+					Headers: map[string]string{
+						"Knative-Serving-Tag": "foo",
+					},
+					Splits: []netv1alpha1.IngressBackendSplit{{
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      rev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 100,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  rev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}},
+				}, {
+					Splits: []netv1alpha1.IngressBackendSplit{{
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      rev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 50,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  rev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}, {
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      cfgrev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 50,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  cfgrev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}},
+				}},
+			},
+			Visibility: netv1alpha1.IngressVisibilityExternalIP,
+		}, {
+			Hosts: []string{
+				"bar-test-route.test.svc.cluster.local",
+				"bar-test-route.test.test-domain.dev",
+			},
+			HTTP: &netv1alpha1.HTTPIngressRuleValue{
+				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "bar",
+					},
+					Splits: []netv1alpha1.IngressBackendSplit{{
+						IngressBackend: netv1alpha1.IngressBackend{
+							ServiceNamespace: testNamespace,
+							ServiceName:      cfgrev.Name,
+							ServicePort:      intstr.FromInt(80),
+						},
+						Percent: 100,
+						AppendHeaders: map[string]string{
+							"Knative-Serving-Revision":  cfgrev.Name,
+							"Knative-Serving-Namespace": testNamespace,
+						},
+					}},
+				}},
+			},
+			Visibility: netv1alpha1.IngressVisibilityExternalIP,
+		}, {
+			Hosts: []string{
+				"foo-test-route.test.svc.cluster.local",
+				"foo-test-route.test.test-domain.dev",
+			},
+			HTTP: &netv1alpha1.HTTPIngressRuleValue{
+				Paths: []netv1alpha1.HTTPIngressPath{{
+					AppendHeaders: map[string]string{
+						"Knative-Serving-Tag": "foo",
+					},
 					Splits: []netv1alpha1.IngressBackendSplit{{
 						IngressBackend: netv1alpha1.IngressBackend{
 							ServiceNamespace: testNamespace,

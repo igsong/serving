@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,14 @@ import (
 	"knative.dev/serving/pkg/reconciler/route/resources/names"
 	"knative.dev/serving/pkg/reconciler/route/traffic"
 	"knative.dev/serving/pkg/resources"
+)
+
+const (
+	// RevisionHeaderTag is the header name specifying a tag name corresponding to the routh path which is used for the HTTP request
+	RevisionHeaderTag = "Knative-Serving-Tag"
+
+	// RouteWithTagHeaderAnnotationKey is the annotation key specifying if the service will be routed by a tag header or not.
+	RouteWithTagHeaderAnnotationKey = "networking.knative.dev/routeWithTagHeader"
 )
 
 // MakeIngressTLS creates IngressTLS to configure the ingress TLS.
@@ -113,6 +122,16 @@ func MakeIngressSpec(
 				return v1alpha1.IngressSpec{}, err
 			}
 			rule := *makeIngressRule([]string{domain}, r.Namespace, visibility, targets[name])
+			if name == traffic.DefaultTarget {
+				// Add paths for routing with tag header.
+				rule.HTTP.Paths = append(
+					makeTagBasedRoutingIngressPaths(r.Namespace, targets, names, r.GetAnnotations()), rule.HTTP.Paths...)
+			} else {
+				// Otherwise,
+				rule.HTTP.Paths[0].AppendHeaders = map[string]string{
+					RevisionHeaderTag: name,
+				}
+			}
 			// If this is a public rule, we need to configure ACME challenge paths.
 			if visibility == netv1alpha1.IngressVisibilityExternalIP {
 				rule.HTTP.Paths = append(
@@ -175,6 +194,49 @@ func makeACMEIngressPaths(challenges map[string]v1alpha1.HTTP01Challenge, domain
 }
 
 func makeIngressRule(domains []string, ns string, visibility netv1alpha1.IngressVisibility, targets traffic.RevisionTargets) *v1alpha1.IngressRule {
+	return &v1alpha1.IngressRule{
+		Hosts:      domains,
+		Visibility: visibility,
+		HTTP: &v1alpha1.HTTPIngressRuleValue{
+			Paths: []v1alpha1.HTTPIngressPath{
+				*makeBaseIngressPath(ns, targets),
+			},
+		},
+	}
+}
+
+func makeErrorIngressPath() *v1alpha1.HTTPIngressPath {
+	path := &v1alpha1.HTTPIngressPath{
+		Splits: []v1alpha1.IngressBackendSplit{{
+			IngressBackend: v1alpha1.IngressBackend{
+				ServiceNamespace: "default",
+				ServiceName:      "not-existing-service",
+				ServicePort:      intstr.FromInt(80),
+			},
+			Percent: 100,
+		}},
+		Headers: map[string]string{RevisionHeaderTag: "^.*[^?]$"},
+	}
+	return path
+}
+
+func makeTagBasedRoutingIngressPaths(ns string, targets map[string]traffic.RevisionTargets, names []string, annotation map[string]string) []v1alpha1.HTTPIngressPath {
+	paths := []v1alpha1.HTTPIngressPath{}
+	if needsRouteWithTagHeader, ok := annotation[RouteWithTagHeaderAnnotationKey]; ok && needsRouteWithTagHeader == "true" {
+		for _, name := range names {
+			if name != traffic.DefaultTarget {
+				path := makeBaseIngressPath(ns, targets[name])
+				path.AppendHeaders = nil
+				path.Headers = map[string]string{RevisionHeaderTag: fmt.Sprintf("^%s[?]?$", name)}
+				paths = append(paths, *path)
+			}
+		}
+	}
+	paths = append(paths, *makeErrorIngressPath())
+	return paths
+}
+
+func makeBaseIngressPath(ns string, targets traffic.RevisionTargets) *v1alpha1.HTTPIngressPath {
 	// Optimistically allocate |targets| elements.
 	splits := make([]v1alpha1.IngressBackendSplit, 0, len(targets))
 	for _, t := range targets {
@@ -198,14 +260,8 @@ func makeIngressRule(domains []string, ns string, visibility netv1alpha1.Ingress
 		})
 	}
 
-	return &v1alpha1.IngressRule{
-		Hosts:      domains,
-		Visibility: visibility,
-		HTTP: &v1alpha1.HTTPIngressRuleValue{
-			Paths: []v1alpha1.HTTPIngressPath{{
-				Splits: splits,
-				// TODO(lichuqiang): #2201, plumbing to config timeout and retries.
-			}},
-		},
+	return &v1alpha1.HTTPIngressPath{
+		Splits: splits,
+		// TODO(lichuqiang): #2201, plumbing to config timeout and retries.
 	}
 }

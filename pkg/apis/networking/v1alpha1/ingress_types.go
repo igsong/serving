@@ -209,6 +209,13 @@ type HTTPIngressPath struct {
 	// +optional
 	Path string `json:"path,omitempty"`
 
+	// Headers is a map from a header name to a header value which has a format of ECMAscript style regex.
+	// These headers are matched with the incoming request,
+	// and only the request matched with all the headers follows the ingress rule.
+	// If it is empty, the headers are not used for matching
+	// +optional
+	Headers map[string]string `json:"headers,omitempty"`
+
 	// Splits defines the referenced service endpoints to which the traffic
 	// will be forwarded to.
 	Splits []IngressBackendSplit `json:"splits"`

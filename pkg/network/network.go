@@ -130,6 +130,10 @@ const (
 	// AutoscalingUserAgent is the user-agent header value set in probe
 	// requests sent by autoscaling implementations.
 	AutoscalingUserAgent = "Knative-Autoscaling-Probe"
+
+	// TagHeaderBasedRoutingKey is the name of the configuration entry
+	// that specifies enabling tag header based routing or not.
+	TagHeaderBasedRoutingKey = "tagHeaderBasedRouting"
 )
 
 // DomainTemplateValues are the available properties people can choose from
@@ -177,6 +181,9 @@ type Config struct {
 
 	// DefaultCertificateClass specifies the default Certificate class.
 	DefaultCertificateClass string
+
+	// TagHeaderBasedRouting specifies if TagHeaderBasedRouting is enabled or not.
+	TagHeaderBasedRouting bool
 }
 
 // HTTPProtocol indicates a type of HTTP endpoint behavior
@@ -274,6 +281,7 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 	}
 
 	nc.AutoTLS = strings.EqualFold(configMap.Data[AutoTLSKey], "enabled")
+	nc.TagHeaderBasedRouting = strings.EqualFold(configMap.Data[TagHeaderBasedRoutingKey], "enabled")
 
 	switch strings.ToLower(configMap.Data[HTTPProtocolKey]) {
 	case string(HTTPEnabled):

@@ -126,6 +126,9 @@ type config struct {
 	TracingConfigSampleRate           float64                   `split_words:"true"` // optional
 	TracingConfigZipkinEndpoint       string                    `split_words:"true"` // optional
 	TracingConfigStackdriverProjectID string                    `split_words:"true"` // optional
+
+	// TagBasedRouting configuration
+	EnableTagBasedRoutingFallback bool `split_words:"true"` // optional
 }
 
 // Make handler a closure for testing.
@@ -193,6 +196,45 @@ func preferPodForScaledown(downwardAPILabelsPath string) (bool, error) {
 	}
 
 	return scaleDown, nil
+}
+
+func getUniqueHeader(r *http.Request, headerName string) (string, error) {
+	// Check if there are multiple header entries with different values
+	if values, ok := r.Header[headerName]; ok && len(values) > 1 {
+		fv := values[0]
+		for _, ov := range values[1:len(values)] {
+			if fv != ov {
+				return "", fmt.Errorf("multiple header entries with different values are existing")
+			}
+		}
+	}
+
+	return r.Header.Get(headerName), nil
+}
+
+func tagBasedRoutingErrorHandler(next http.Handler, env config) http.Handler {
+	// To prevent use of appended
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedTag, err := getUniqueHeader(r, "Knative-Serving-Tag")
+		if err != nil {
+			http.Error(w, "multiple Knative-Serving-Tag values are not permitted", http.StatusBadRequest)
+			return
+		}
+		routedTag, err := getUniqueHeader(r, "Knative-Serving-Tag-Routed")
+		if err != nil {
+			http.Error(w, "multiple Knative-Serving-Tag-Routed values are not permitted", http.StatusBadRequest)
+			return
+		}
+
+		if !env.EnableTagBasedRoutingFallback && len(requestedTag) > 0 && requestedTag != routedTag {
+			// If a request has different values on Knative-Serving-Tag and Knative-Serving-Tag-Routed, it is an invalid request.
+			// Since such case happen when a user make a request with non-existing tag, here, NotFound is returned.
+			http.Error(w, "Tag Not Found", http.StatusNotFound)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func knativeProbeHandler(healthState *health.State, prober func() bool, isAggressive bool, tracingEnabled bool, next http.Handler, env config, logger *zap.SugaredLogger) http.HandlerFunc {
@@ -489,6 +531,7 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, req
 	composedHandler = queue.ForwardedShimHandler(composedHandler)
 	composedHandler = queue.TimeToFirstByteTimeoutHandler(composedHandler,
 		time.Duration(env.RevisionTimeoutSeconds)*time.Second, "request timeout")
+	composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
 	composedHandler = pushRequestLogHandler(composedHandler, env)
 
 	if metricsSupported {

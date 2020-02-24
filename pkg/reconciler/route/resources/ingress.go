@@ -210,21 +210,6 @@ func makeIngressRule(domains []string, ns string, visibility netv1alpha1.Ingress
 	}
 }
 
-func makeErrorIngressPath() *v1alpha1.HTTPIngressPath {
-	path := &v1alpha1.HTTPIngressPath{
-		Splits: []v1alpha1.IngressBackendSplit{{
-			IngressBackend: v1alpha1.IngressBackend{
-				ServiceNamespace: "default",
-				ServiceName:      "not-existing-service",
-				ServicePort:      intstr.FromInt(80),
-			},
-			Percent: 100,
-		}},
-		Headers: map[string]string{RevisionHeaderTag: "^.*[^?]$"},
-	}
-	return path
-}
-
 func makeTagBasedRoutingIngressPaths(ns string, targets map[string]traffic.RevisionTargets, names []string, annotation map[string]string) []v1alpha1.HTTPIngressPath {
 	paths := []v1alpha1.HTTPIngressPath{}
 

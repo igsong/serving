@@ -132,18 +132,6 @@ func TestMakeIngressSpec_CorrectRules(t *testing.T) {
 		},
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
-			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
 						ServiceNamespace: ns,
@@ -165,18 +153,6 @@ func TestMakeIngressSpec_CorrectRules(t *testing.T) {
 		},
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
-			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
 						ServiceNamespace: ns,
@@ -198,9 +174,6 @@ func TestMakeIngressSpec_CorrectRules(t *testing.T) {
 		},
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
-				AppendHeaders: map[string]string{
-					"Knative-Serving-Tag": "v1",
-				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
 						ServiceNamespace: ns,
@@ -222,9 +195,6 @@ func TestMakeIngressSpec_CorrectRules(t *testing.T) {
 		},
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
-				AppendHeaders: map[string]string{
-					"Knative-Serving-Tag": "v1",
-				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
 						ServiceNamespace: ns,
@@ -336,7 +306,7 @@ func TestMakeIngressSpec_CorrectRuleVisibility(t *testing.T) {
 	}
 }
 
-func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) {
+func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 	targets := map[string]traffic.RevisionTargets{
 		traffic.DefaultTarget: {{
 			TrafficTarget: v1.TrafficTarget{
@@ -359,10 +329,6 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 	}
 
 	r := Route(ns, "test-route", WithURL)
-	if r.GetAnnotations() == nil {
-		r.SetAnnotations(map[string]string{})
-	}
-	r.GetAnnotations()[RouteWithTagHeaderAnnotationKey] = "true"
 
 	expected := []netv1alpha1.IngressRule{{
 		Hosts: []string{
@@ -371,7 +337,10 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				Headers: map[string]string{
-					"Knative-Serving-Tag": "^v1[?]?$",
+					network.TagHeaderRequestedName: "^v1$",
+				},
+				AppendHeaders: map[string]string{
+					network.TagHeaderDeliveredName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -385,18 +354,6 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 						"Knative-Serving-Namespace": ns,
 					},
 				}},
-			}, {
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
 			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -420,7 +377,10 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				Headers: map[string]string{
-					"Knative-Serving-Tag": "^v1[?]?$",
+					network.TagHeaderRequestedName: "^v1$",
+				},
+				AppendHeaders: map[string]string{
+					network.TagHeaderDeliveredName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -434,18 +394,6 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 						"Knative-Serving-Namespace": ns,
 					},
 				}},
-			}, {
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
 			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -469,7 +417,8 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				AppendHeaders: map[string]string{
-					"Knative-Serving-Tag": "v1",
+					network.TagHeaderRequestedName: "v1",
+					network.TagHeaderDeliveredName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -493,7 +442,8 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				AppendHeaders: map[string]string{
-					"Knative-Serving-Tag": "v1",
+					network.TagHeaderRequestedName: "v1",
+					network.TagHeaderDeliveredName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -512,7 +462,11 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouteAnnotations(t *testing.T) 
 		Visibility: netv1alpha1.IngressVisibilityExternalIP,
 	}}
 
-	ci, err := MakeIngressSpec(getContext(), r, nil, targets, nil /* visibility */)
+	cfg := testConfig()
+	cfg.Network.TagHeaderBasedRouting = true
+	ctx := config.ToContext(context.Background(), cfg)
+
+	ci, err := MakeIngressSpec(ctx, r, nil, targets, nil /* visibility */)
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
@@ -1010,18 +964,6 @@ func TestMakeClusterIngress_ACMEChallenges(t *testing.T) {
 		Visibility: netv1alpha1.IngressVisibilityClusterLocal,
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
-			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
 						ServiceNamespace: "test-ns",
@@ -1051,18 +993,6 @@ func TestMakeClusterIngress_ACMEChallenges(t *testing.T) {
 					},
 					Percent: 100,
 				}},
-			}, {
-				Headers: map[string]string{"Knative-Serving-Tag": "^.*[^?]$"},
-				Splits: []netv1alpha1.IngressBackendSplit{
-					{
-						IngressBackend: netv1alpha1.IngressBackend{
-							ServiceNamespace: "default",
-							ServiceName:      "not-existing-service",
-							ServicePort:      intstr.IntOrString{IntVal: 80},
-						},
-						Percent: 100,
-					},
-				},
 			}, {
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{

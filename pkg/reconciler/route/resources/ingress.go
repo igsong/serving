@@ -32,19 +32,13 @@ import (
 	netv1alpha1 "knative.dev/serving/pkg/apis/networking/v1alpha1"
 	"knative.dev/serving/pkg/apis/serving"
 	servingv1 "knative.dev/serving/pkg/apis/serving/v1"
+	"knative.dev/serving/pkg/network"
 	"knative.dev/serving/pkg/reconciler/route/config"
 	"knative.dev/serving/pkg/reconciler/route/domains"
 	"knative.dev/serving/pkg/reconciler/route/resources/labels"
 	"knative.dev/serving/pkg/reconciler/route/resources/names"
 	"knative.dev/serving/pkg/reconciler/route/traffic"
 	"knative.dev/serving/pkg/resources"
-)
-
-const (
-	// RevisionHeaderTag is the header name specifying a tag name corresponding to the routh path which is requested for the HTTP request
-	RevisionHeaderTag = "Knative-Serving-Tag"
-	// RevisionHeaderTagRouted is the header name specifying a tag name corresponding to the routh path which is used for routing the HTTP request
-	RevisionHeaderTagRouted = "Knative-Serving-Tag-Routed"
 )
 
 // MakeIngressTLS creates IngressTLS to configure the ingress TLS.
@@ -124,19 +118,19 @@ func MakeIngressSpec(
 				return v1alpha1.IngressSpec{}, err
 			}
 			rule := *makeIngressRule([]string{domain}, r.Namespace, visibility, targets[name])
-
 			if networkConfig.TagHeaderBasedRouting {
 				if name == traffic.DefaultTarget {
 					rule.HTTP.Paths = append(
 						makeTagBasedRoutingIngressPaths(r.Namespace, targets, names, r.GetAnnotations()), rule.HTTP.Paths...)
+
 				} else {
 					// Otherwise,
 					rule.HTTP.Paths[0].AppendHeaders = map[string]string{
-						RevisionHeaderTag: name,
+						network.TagHeaderRequestedName: name,
+						network.TagHeaderDeliveredName: name,
 					}
 				}
 			}
-
 			// If this is a public rule, we need to configure ACME challenge paths.
 			if visibility == netv1alpha1.IngressVisibilityExternalIP {
 				rule.HTTP.Paths = append(
@@ -216,8 +210,11 @@ func makeTagBasedRoutingIngressPaths(ns string, targets map[string]traffic.Revis
 	for _, name := range names {
 		if name != traffic.DefaultTarget {
 			path := makeBaseIngressPath(ns, targets[name])
-			path.AppendHeaders = nil
-			path.Headers = map[string]string{RevisionHeaderTag: fmt.Sprintf("^%s[?]?$", name)}
+			if path.AppendHeaders == nil {
+				path.AppendHeaders = make(map[string]string)
+			}
+			path.AppendHeaders[network.TagHeaderDeliveredName] = name
+			path.Headers = map[string]string{network.TagHeaderRequestedName: fmt.Sprintf("^%s$", name)}
 			paths = append(paths, *path)
 		}
 	}

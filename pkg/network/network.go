@@ -131,6 +131,12 @@ const (
 	// requests sent by autoscaling implementations.
 	AutoscalingUserAgent = "Knative-Autoscaling-Probe"
 
+	// TagHeaderRequestedName is the name of the header entry which has a tag name as value.
+	// The tag name is used for determining route in the ingress
+	TagHeaderRequestedName = "Knative-Serving-Tag"
+	// TagHeaderDeliveredName is the name of the header entry which has a tag name as value.
+	// The tag name is used for specifying the tag attached to the route, which is used for routing the request
+	TagHeaderDeliveredName = "Knative-Serving-Tag-Delivered-To"
 	// TagHeaderBasedRoutingKey is the name of the configuration entry
 	// that specifies enabling tag header based routing or not.
 	TagHeaderBasedRoutingKey = "tagHeaderBasedRouting"

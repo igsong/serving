@@ -199,14 +199,9 @@ func preferPodForScaledown(downwardAPILabelsPath string) (bool, error) {
 }
 
 func getUniqueHeader(r *http.Request, headerName string) (string, error) {
-	// Check if there are multiple header entries with different values
-	if values, ok := r.Header[headerName]; ok && len(values) > 1 {
-		fv := values[0]
-		for _, ov := range values[1:len(values)] {
-			if fv != ov {
-				return "", fmt.Errorf("multiple header entries with different values are existing")
-			}
-		}
+	// Check if there are multiple header entries
+	if len(r.Header[headerName]) > 1 {
+		return "", fmt.Errorf("multiple %s header entries are not permitted", headerName)
 	}
 
 	return r.Header.Get(headerName), nil
@@ -215,19 +210,19 @@ func getUniqueHeader(r *http.Request, headerName string) (string, error) {
 func tagBasedRoutingErrorHandler(next http.Handler, env config) http.Handler {
 	// To prevent use of appended
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestedTag, err := getUniqueHeader(r, "Knative-Serving-Tag")
+		requestedTag, err := getUniqueHeader(r, network.TagHeaderRequestedName)
 		if err != nil {
-			http.Error(w, "multiple Knative-Serving-Tag values are not permitted", http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		routedTag, err := getUniqueHeader(r, "Knative-Serving-Tag-Routed")
+		deliveredTag, err := getUniqueHeader(r, network.TagHeaderDeliveredName)
 		if err != nil {
-			http.Error(w, "multiple Knative-Serving-Tag-Routed values are not permitted", http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if !env.EnableTagBasedRoutingFallback && len(requestedTag) > 0 && requestedTag != routedTag {
-			// If a request has different values on Knative-Serving-Tag and Knative-Serving-Tag-Routed, it is an invalid request.
+		if !env.EnableTagBasedRoutingFallback && len(requestedTag) > 0 && requestedTag != deliveredTag {
+			// If a request has different values on requestedTag and deliveredTag, it is an invalid request.
 			// Since such case happen when a user make a request with non-existing tag, here, NotFound is returned.
 			http.Error(w, "Tag Not Found", http.StatusNotFound)
 			return

@@ -128,7 +128,8 @@ type config struct {
 	TracingConfigStackdriverProjectID string                    `split_words:"true"` // optional
 
 	// TagBasedRouting configuration
-	EnableTagBasedRoutingFallback bool `split_words:"true"` // optional
+	EnableTagBasedRouting                  bool `split_words:"true"` // optional
+	EnableTagBasedRoutingFallbackToDefault bool `split_words:"true"` // optional
 }
 
 // Make handler a closure for testing.
@@ -221,7 +222,7 @@ func tagBasedRoutingErrorHandler(next http.Handler, env config) http.Handler {
 			return
 		}
 
-		if !env.EnableTagBasedRoutingFallback && len(requestedTag) > 0 && requestedTag != deliveredTag {
+		if !env.EnableTagBasedRoutingFallbackToDefault && len(requestedTag) > 0 && requestedTag != deliveredTag {
 			// If a request has different values on requestedTag and deliveredTag, it is an invalid request.
 			// Since such case happen when a user make a request with non-existing tag, here, NotFound is returned.
 			http.Error(w, "Tag Not Found", http.StatusNotFound)
@@ -515,6 +516,7 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, req
 	breaker := buildBreaker(env)
 	metricsSupported := supportsMetrics(env, logger)
 	tracingEnabled := env.TracingConfigBackend != tracingconfig.None
+	tagBasedRoutingEnabled := env.EnableTagBasedRouting
 
 	// Create queue handler chain.
 	// Note: innermost handlers are specified first, ie. the last handler in the chain will be executed first.
@@ -526,14 +528,14 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, req
 	composedHandler = queue.ForwardedShimHandler(composedHandler)
 	composedHandler = queue.TimeToFirstByteTimeoutHandler(composedHandler,
 		time.Duration(env.RevisionTimeoutSeconds)*time.Second, "request timeout")
-	composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
 	composedHandler = pushRequestLogHandler(composedHandler, env)
-
 	if metricsSupported {
 		composedHandler = requestMetricsHandler(composedHandler, env)
 	}
 	composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
-
+	if tagBasedRoutingEnabled {
+		composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
+	}
 	composedHandler = knativeProbeHandler(healthState, rp.ProbeContainer, rp.IsAggressive(), tracingEnabled, composedHandler, env, logger)
 	composedHandler = network.NewProbeHandler(composedHandler)
 
@@ -642,7 +644,7 @@ func pushRequestLogHandler(currentHandler http.Handler, env config) http.Handler
 
 func requestMetricsHandler(currentHandler http.Handler, env config) http.Handler {
 	h, err := queue.NewRequestMetricsHandler(currentHandler, env.ServingNamespace,
-		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod)
+		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod, env.EnableTagBasedRouting)
 	if err != nil {
 		logger.Errorw("Error setting up request metrics reporter. Request metrics will be unavailable.", zap.Error(err))
 		return currentHandler
@@ -652,7 +654,7 @@ func requestMetricsHandler(currentHandler http.Handler, env config) http.Handler
 
 func requestAppMetricsHandler(currentHandler http.Handler, breaker *queue.Breaker, env config) http.Handler {
 	h, err := queue.NewAppRequestMetricsHandler(currentHandler, breaker, env.ServingNamespace,
-		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod)
+		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod, env.EnableTagBasedRouting)
 	if err != nil {
 		logger.Errorw("Error setting up app request metrics reporter. Request metrics will be unavailable.", zap.Error(err))
 		return currentHandler

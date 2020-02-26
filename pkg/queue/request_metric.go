@@ -61,19 +61,21 @@ var (
 )
 
 type requestMetricsHandler struct {
-	next     http.Handler
-	statsCtx context.Context
+	next                   http.Handler
+	statsCtx               context.Context
+	enablesTagBasedRouting bool
 }
 
 type appRequestMetricsHandler struct {
-	next     http.Handler
-	statsCtx context.Context
-	breaker  *Breaker
+	next                   http.Handler
+	statsCtx               context.Context
+	breaker                *Breaker
+	enablesTagBasedRouting bool
 }
 
 // NewRequestMetricsHandler creates an http.Handler that emits request metrics.
 func NewRequestMetricsHandler(next http.Handler,
-	ns, service, config, rev, pod string) (http.Handler, error) {
+	ns, service, config, rev, pod string, enablesTagBasedRouting bool) (http.Handler, error) {
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
 	if err := view.Register(
@@ -99,8 +101,9 @@ func NewRequestMetricsHandler(next http.Handler,
 	}
 
 	return &requestMetricsHandler{
-		next:     next,
-		statsCtx: ctx,
+		next:                   next,
+		statsCtx:               ctx,
+		enablesTagBasedRouting: enablesTagBasedRouting,
 	}, nil
 }
 
@@ -124,6 +127,9 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			panic(err)
 		}
 		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
+		if h.enablesTagBasedRouting {
+			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderRequestedName))
+		}
 		pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 			responseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()
@@ -133,7 +139,7 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 // NewAppRequestMetricsHandler creates an http.Handler that emits request metrics.
 func NewAppRequestMetricsHandler(next http.Handler, b *Breaker,
-	ns, service, config, rev, pod string) (http.Handler, error) {
+	ns, service, config, rev, pod string, enablesTagBasedRouting bool) (http.Handler, error) {
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
 	if err := view.Register(&view.View{
@@ -161,9 +167,10 @@ func NewAppRequestMetricsHandler(next http.Handler, b *Breaker,
 	}
 
 	return &appRequestMetricsHandler{
-		next:     next,
-		statsCtx: ctx,
-		breaker:  b,
+		next:                   next,
+		statsCtx:               ctx,
+		breaker:                b,
+		enablesTagBasedRouting: enablesTagBasedRouting,
 	}, nil
 }
 
@@ -190,6 +197,9 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 			panic(err)
 		}
 		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
+		if h.enablesTagBasedRouting {
+			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderRequestedName))
+		}
 		pkgmetrics.RecordBatch(ctx, appRequestCountM.M(1),
 			appResponseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()

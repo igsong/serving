@@ -187,7 +187,7 @@ func makeQueueProbe(in *corev1.Probe) *corev1.Probe {
 }
 
 // makeQueueContainer creates the container spec for the queue sidecar.
-func makeQueueContainer(rev *v1.Revision, loggingConfig *logging.Config, tracingConfig *tracingconfig.Config, observabilityConfig *metrics.ObservabilityConfig,
+func makeQueueContainer(rev *v1.Revision, loggingConfig *logging.Config, tracingConfig *tracingconfig.Config, networkConfig *network.Config, observabilityConfig *metrics.ObservabilityConfig,
 	autoscalerConfig *autoscalerconfig.Config, deploymentConfig *deployment.Config) (*corev1.Container, error) {
 	configName := ""
 	if owner := metav1.GetControllerOf(rev); owner != nil && owner.Kind == "Configuration" {
@@ -293,6 +293,12 @@ func makeQueueContainer(rev *v1.Revision, loggingConfig *logging.Config, tracing
 		}, {
 			Name:  "SERVING_REQUEST_METRICS_BACKEND",
 			Value: observabilityConfig.RequestMetricsBackend,
+		}, {
+			Name:  "ENABLE_TAG_BASED_ROUTING",
+			Value: strconv.FormatBool(networkConfig.TagHeaderBasedRouting),
+		}, {
+			Name:  "ENABLE_TAG_BASED_ROUTING_FALLBACK_TO_DEFAULT",
+			Value: strconv.FormatBool(networkConfig.TagHeaderBasedRoutingFallbackToDefault),
 		}, {
 			Name:  "TRACING_CONFIG_BACKEND",
 			Value: string(tracingConfig.Backend),

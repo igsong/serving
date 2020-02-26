@@ -528,14 +528,14 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, req
 	composedHandler = queue.ForwardedShimHandler(composedHandler)
 	composedHandler = queue.TimeToFirstByteTimeoutHandler(composedHandler,
 		time.Duration(env.RevisionTimeoutSeconds)*time.Second, "request timeout")
+	if tagBasedRoutingEnabled {
+		composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
+	}
 	composedHandler = pushRequestLogHandler(composedHandler, env)
 	if metricsSupported {
 		composedHandler = requestMetricsHandler(composedHandler, env)
 	}
 	composedHandler = tracing.HTTPSpanMiddleware(composedHandler)
-	if tagBasedRoutingEnabled {
-		composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
-	}
 	composedHandler = knativeProbeHandler(healthState, rp.ProbeContainer, rp.IsAggressive(), tracingEnabled, composedHandler, env, logger)
 	composedHandler = network.NewProbeHandler(composedHandler)
 

@@ -135,8 +135,8 @@ func rewriteUserProbe(p *corev1.Probe, userPort int) {
 	}
 }
 
-func makePodSpec(rev *v1.Revision, loggingConfig *logging.Config, tracingConfig *tracingconfig.Config, observabilityConfig *metrics.ObservabilityConfig, autoscalerConfig *autoscalerconfig.Config, deploymentConfig *deployment.Config) (*corev1.PodSpec, error) {
-	queueContainer, err := makeQueueContainer(rev, loggingConfig, tracingConfig, observabilityConfig, autoscalerConfig, deploymentConfig)
+func makePodSpec(rev *v1.Revision, loggingConfig *logging.Config, tracingConfig *tracingconfig.Config, networkConfig *network.Config, observabilityConfig *metrics.ObservabilityConfig, autoscalerConfig *autoscalerconfig.Config, deploymentConfig *deployment.Config) (*corev1.PodSpec, error) {
+	queueContainer, err := makeQueueContainer(rev, loggingConfig, tracingConfig, networkConfig, observabilityConfig, autoscalerConfig, deploymentConfig)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create queue-proxy container: %w", err)
@@ -252,7 +252,7 @@ func MakeDeployment(rev *v1.Revision,
 			podTemplateAnnotations[IstioOutboundIPRangeAnnotation] = networkConfig.IstioOutboundIPRanges
 		}
 	}
-	podSpec, err := makePodSpec(rev, loggingConfig, tracingConfig, observabilityConfig, autoscalerConfig, deploymentConfig)
+	podSpec, err := makePodSpec(rev, loggingConfig, tracingConfig, networkConfig, observabilityConfig, autoscalerConfig, deploymentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PodSpec: %w", err)
 	}

@@ -128,7 +128,7 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
 		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderRequestedName))
+			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderName))
 		}
 		pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 			responseTimeInMsecM.M(float64(latency.Milliseconds())))
@@ -198,7 +198,7 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		}
 		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
 		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderRequestedName))
+			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderName))
 		}
 		pkgmetrics.RecordBatch(ctx, appRequestCountM.M(1),
 			appResponseTimeInMsecM.M(float64(latency.Milliseconds())))

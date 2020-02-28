@@ -208,15 +208,15 @@ func getUniqueHeader(r *http.Request, headerName string) (string, error) {
 	return r.Header.Get(headerName), nil
 }
 
-func tagBasedRoutingErrorHandler(next http.Handler, env config) http.Handler {
+func tagBasedRoutingHandler(next http.Handler, env config) http.Handler {
 	// To prevent use of appended
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestedTag, err := getUniqueHeader(r, network.TagHeaderRequestedName)
+		requestedTag, err := getUniqueHeader(r, network.TagHeaderName)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		deliveredTag, err := getUniqueHeader(r, network.TagHeaderDeliveredName)
+		deliveredTag, err := getUniqueHeader(r, network.TagRefHeaderName)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -228,6 +228,10 @@ func tagBasedRoutingErrorHandler(next http.Handler, env config) http.Handler {
 			http.Error(w, "Tag Not Found", http.StatusNotFound)
 			return
 		}
+
+		// defer func() {
+		// 	w.Header().Add()
+		// }()
 
 		next.ServeHTTP(w, r)
 	})
@@ -529,7 +533,7 @@ func buildServer(env config, healthState *health.State, rp *readiness.Probe, req
 	composedHandler = queue.TimeToFirstByteTimeoutHandler(composedHandler,
 		time.Duration(env.RevisionTimeoutSeconds)*time.Second, "request timeout")
 	if tagBasedRoutingEnabled {
-		composedHandler = tagBasedRoutingErrorHandler(composedHandler, env)
+		composedHandler = tagBasedRoutingHandler(composedHandler, env)
 	}
 	composedHandler = pushRequestLogHandler(composedHandler, env)
 	if metricsSupported {

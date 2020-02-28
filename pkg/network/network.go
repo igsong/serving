@@ -131,19 +131,20 @@ const (
 	// requests sent by autoscaling implementations.
 	AutoscalingUserAgent = "Knative-Autoscaling-Probe"
 
-	// TagHeaderRequestedName is the name of the header entry which has a tag name as value.
-	// The tag name is used for determining route in the ingress
-	TagHeaderRequestedName = "Knative-Serving-Tag"
-	// TagHeaderDeliveredName is the name of the header entry which has a tag name as value.
-	// The tag name is used for specifying the tag attached to the route, which is used for routing the request
-	TagHeaderDeliveredName = "Knative-Serving-Tag-Delivered-To"
+	// TagHeaderName is the name of the header entry which has a tag name as value.
+	// The tag name specifies which route was expected to be chosen by Ingress.
+	TagHeaderName = "Knative-Serving-Tag"
+	// TagRefHeaderName is the name of the header entry which having a tag name.
+	// The tag name specifies which route was actually chosen by Ingress.
+	// Therefore, by comparing TagHeaderName and TagRefHeaderName,
+	// the request is delivered correctly or gone to wrong place.
+	//
+	// To specify the default route, "" will be used as a placeholder.
+	TagRefHeaderName = "Knative-Serving-Tag-Ref"
 
 	// TagHeaderBasedRoutingKey is the name of the configuration entry
-	// that specifies enabling tag header based routing feature or not.
+	// that specifies enabling tag header based routing or not.
 	TagHeaderBasedRoutingKey = "tagHeaderBasedRouting"
-	// TagHeaderBasedRoutingFallbackToDefaultKey is the name of the configuration entry
-	// that specifies enabling fallback to default route while using tag header based routing or not.
-	TagHeaderBasedRoutingFallbackToDefaultKey = "tagHeaderBasedRoutingFallbackToDefault"
 )
 
 // DomainTemplateValues are the available properties people can choose from
@@ -192,11 +193,8 @@ type Config struct {
 	// DefaultCertificateClass specifies the default Certificate class.
 	DefaultCertificateClass string
 
-	// TagHeaderBasedRouting specifies if the feature for "tag based routing" is enabled or not.
+	// TagHeaderBasedRouting specifies if TagHeaderBasedRouting is enabled or not.
 	TagHeaderBasedRouting bool
-
-	// TagHeaderBasedRoutingFallbackToDefault specifies if a request with an undefined tag will be fallthough to the default route or not.
-	TagHeaderBasedRoutingFallbackToDefault bool
 }
 
 // HTTPProtocol indicates a type of HTTP endpoint behavior
@@ -295,7 +293,6 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 
 	nc.AutoTLS = strings.EqualFold(configMap.Data[AutoTLSKey], "enabled")
 	nc.TagHeaderBasedRouting = strings.EqualFold(configMap.Data[TagHeaderBasedRoutingKey], "enabled")
-	nc.TagHeaderBasedRoutingFallbackToDefault = strings.EqualFold(configMap.Data[TagHeaderBasedRoutingFallbackToDefaultKey], "enabled")
 
 	switch strings.ToLower(configMap.Data[HTTPProtocolKey]) {
 	case string(HTTPEnabled):

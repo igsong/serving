@@ -83,6 +83,17 @@ func MakeIngress(
 	}, nil
 }
 
+func setTagRefName(path *v1alpha1.HTTPIngressPath, name string) {
+	if path.AppendHeaders == nil {
+		path.AppendHeaders = make(map[string]string)
+	}
+	if name == traffic.DefaultTarget {
+		path.AppendHeaders[network.TagRefHeaderName] = "\"\""
+	} else {
+		path.AppendHeaders[network.TagRefHeaderName] = name
+	}
+}
+
 // MakeIngressSpec creates a new IngressSpec
 func MakeIngressSpec(
 	ctx context.Context,
@@ -119,16 +130,12 @@ func MakeIngressSpec(
 			}
 			rule := *makeIngressRule([]string{domain}, r.Namespace, visibility, targets[name])
 			if networkConfig.TagHeaderBasedRouting {
+				setTagRefName(&(rule.HTTP.Paths[0]), name)
 				if name == traffic.DefaultTarget {
 					rule.HTTP.Paths = append(
 						makeTagBasedRoutingIngressPaths(r.Namespace, targets, names, r.GetAnnotations()), rule.HTTP.Paths...)
-
 				} else {
-					// Otherwise,
-					rule.HTTP.Paths[0].AppendHeaders = map[string]string{
-						network.TagHeaderRequestedName: name,
-						network.TagHeaderDeliveredName: name,
-					}
+					rule.HTTP.Paths[0].AppendHeaders[network.TagHeaderName] = name
 				}
 			}
 			// If this is a public rule, we need to configure ACME challenge paths.
@@ -210,11 +217,8 @@ func makeTagBasedRoutingIngressPaths(ns string, targets map[string]traffic.Revis
 	for _, name := range names {
 		if name != traffic.DefaultTarget {
 			path := makeBaseIngressPath(ns, targets[name])
-			if path.AppendHeaders == nil {
-				path.AppendHeaders = make(map[string]string)
-			}
-			path.AppendHeaders[network.TagHeaderDeliveredName] = name
-			path.Headers = map[string]string{network.TagHeaderRequestedName: fmt.Sprintf("^%s$", name)}
+			setTagRefName(path, name)
+			path.Headers = map[string]string{network.TagHeaderName: fmt.Sprintf("^%s$", name)}
 			paths = append(paths, *path)
 		}
 	}

@@ -337,10 +337,10 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				Headers: map[string]string{
-					network.TagHeaderRequestedName: "^v1$",
+					network.TagHeaderName: "^v1$",
 				},
 				AppendHeaders: map[string]string{
-					network.TagHeaderDeliveredName: "v1",
+					network.TagRefHeaderName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -377,10 +377,10 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				Headers: map[string]string{
-					network.TagHeaderRequestedName: "^v1$",
+					network.TagHeaderName: "^v1$",
 				},
 				AppendHeaders: map[string]string{
-					network.TagHeaderDeliveredName: "v1",
+					network.TagRefHeaderName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -417,8 +417,8 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				AppendHeaders: map[string]string{
-					network.TagHeaderRequestedName: "v1",
-					network.TagHeaderDeliveredName: "v1",
+					network.TagHeaderName:    "v1",
+					network.TagRefHeaderName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{
@@ -442,8 +442,8 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 		HTTP: &netv1alpha1.HTTPIngressRuleValue{
 			Paths: []netv1alpha1.HTTPIngressPath{{
 				AppendHeaders: map[string]string{
-					network.TagHeaderRequestedName: "v1",
-					network.TagHeaderDeliveredName: "v1",
+					network.TagHeaderName:    "v1",
+					network.TagRefHeaderName: "v1",
 				},
 				Splits: []netv1alpha1.IngressBackendSplit{{
 					IngressBackend: netv1alpha1.IngressBackend{

@@ -61,7 +61,7 @@ var (
 )
 
 const (
-	defaultTargetName = "__DEFAULT__"
+	defaultTargetName = "DEFAULT"
 )
 
 type requestMetricsHandler struct {
@@ -83,7 +83,7 @@ func NewRequestMetricsHandler(next http.Handler,
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
 	if enablesTagBasedRouting {
-		keys = append(keys, metrics.TrafficTagKey)
+		keys = append(keys, metrics.TagNameKey)
 	}
 	if err := view.Register(
 		&view.View{
@@ -129,7 +129,7 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		latency := time.Since(startTime)
 		ctx := h.statsCtx
 		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithTrafficTag(ctx, GetTagRefName(r))
+			ctx = metrics.AugmentWithTagName(ctx, GetTagRefName(r))
 		}
 		if err != nil {
 			ctx = metrics.AugmentWithResponse(ctx, http.StatusInternalServerError)
@@ -151,7 +151,7 @@ func NewAppRequestMetricsHandler(next http.Handler, b *Breaker,
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
 	if enablesTagBasedRouting {
-		keys = append(keys, metrics.TrafficTagKey)
+		keys = append(keys, metrics.TagNameKey)
 	}
 	if err := view.Register(&view.View{
 		Description: "The number of requests that are routed to queue-proxy",
@@ -203,7 +203,7 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		latency := time.Since(startTime)
 		ctx := h.statsCtx
 		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithTrafficTag(ctx, GetTagRefName(r))
+			ctx = metrics.AugmentWithTagName(ctx, GetTagRefName(r))
 		}
 		if err != nil {
 			ctx = metrics.AugmentWithResponse(ctx, http.StatusInternalServerError)
@@ -224,6 +224,15 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 func GetTagRefName(r *http.Request) string {
 	name := r.Header.Get(network.TagRefHeaderName)
 	if name == network.DefaultTargetHeaderValue {
+		return defaultTargetName
+	}
+	return name
+}
+
+// GetTagName returns a value of TagHeader
+func GetTagName(r *http.Request) string {
+	name := r.Header.Get(network.TagHeaderName)
+	if name == "" {
 		return defaultTargetName
 	}
 	return name

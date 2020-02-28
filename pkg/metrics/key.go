@@ -35,7 +35,9 @@ var (
 	ContainerTagKey      = tag.MustNewKey("container_name")
 	ResponseCodeKey      = tag.MustNewKey(metricskey.LabelResponseCode)
 	ResponseCodeClassKey = tag.MustNewKey(metricskey.LabelResponseCodeClass)
-	TrafficTagKey        = tag.MustNewKey("tag_name")
+	TagNameKey           = tag.MustNewKey("tag_name")
+	TagExpectedKey       = tag.MustNewKey("tag_expected")
+	TagActualKey         = tag.MustNewKey("tag_actual")
 
 	CommonRevisionKeys = []tag.Key{NamespaceTagKey, ServiceTagKey, ConfigTagKey, RevisionTagKey}
 )

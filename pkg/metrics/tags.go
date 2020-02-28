@@ -135,11 +135,20 @@ func AugmentWithResponse(baseCtx context.Context, responseCode int) context.Cont
 	return ctx
 }
 
-// AugmentWithTrafficTag augments the given context with the corresponding traffic tag.
-func AugmentWithTrafficTag(baseCtx context.Context, trafficTag string) context.Context {
+// AugmentWithTagName augments the given context with the corresponding tag name
+func AugmentWithTagName(baseCtx context.Context, tagName string) context.Context {
 	ctx, _ := tag.New(
 		baseCtx,
-		tag.Upsert(TrafficTagKey, trafficTag))
+		tag.Upsert(TagNameKey, tagName))
+	return ctx
+}
+
+// AugmentWithActualAndExpectedTagName augments the given context with the actual and expected tag name
+func AugmentWithActualAndExpectedTagName(baseCtx context.Context, actualTagName string, expectedTagName string) context.Context {
+	ctx, _ := tag.New(
+		baseCtx,
+		tag.Upsert(TagActualKey, actualTagName),
+		tag.Upsert(TagExpectedKey, expectedTagName))
 	return ctx
 }
 

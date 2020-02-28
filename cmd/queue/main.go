@@ -199,44 +199,6 @@ func preferPodForScaledown(downwardAPILabelsPath string) (bool, error) {
 	return scaleDown, nil
 }
 
-func getUniqueHeader(r *http.Request, headerName string) (string, error) {
-	// Check if there are multiple header entries
-	if len(r.Header[headerName]) > 1 {
-		return "", fmt.Errorf("multiple %s header entries are not permitted", headerName)
-	}
-
-	return r.Header.Get(headerName), nil
-}
-
-func tagBasedRoutingHandler(next http.Handler, env config) http.Handler {
-	// To prevent use of appended
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tag, err := getUniqueHeader(r, network.TagHeaderName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		tagRef, err := getUniqueHeader(r, network.TagRefHeaderName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		defer func() {
-			w.Header().Add(network.TagRefHeaderName, tagRef)
-		}()
-
-		if !env.EnableTagBasedRoutingFallbackToDefault && len(tag) > 0 && tag != tagRef {
-			// If a request has different values on requestedTag and deliveredTag, it is an invalid request.
-			// Since such case happen when a user make a request with non-existing tag, here, NotFound is returned.
-			http.Error(w, "Tag Not Found", http.StatusNotFound)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func knativeProbeHandler(healthState *health.State, prober func() bool, isAggressive bool, tracingEnabled bool, next http.Handler, env config, logger *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ph := network.KnativeProbeHeader(r)
@@ -663,6 +625,12 @@ func requestAppMetricsHandler(currentHandler http.Handler, breaker *queue.Breake
 		logger.Errorw("Error setting up app request metrics reporter. Request metrics will be unavailable.", zap.Error(err))
 		return currentHandler
 	}
+	return h
+}
+
+func tagBasedRoutingHandler(currentHandler http.Handler, env config) http.Handler {
+	h := queue.NewTagBasedRoutingHandler(currentHandler, env.ServingNamespace,
+		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.EnableTagBasedRouting)
 	return h
 }
 

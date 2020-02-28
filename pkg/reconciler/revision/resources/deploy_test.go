@@ -127,6 +127,12 @@ var (
 			Name:  "SERVING_REQUEST_METRICS_BACKEND",
 			Value: "",
 		}, {
+			Name:  "ENABLE_TAG_BASED_ROUTING",
+			Value: "false",
+		}, {
+			Name:  "ENABLE_TAG_BASED_ROUTING_FALLBACK_TO_DEFAULT",
+			Value: "false",
+		}, {
 			Name:  "TRACING_CONFIG_BACKEND",
 			Value: "",
 		}, {
@@ -403,6 +409,7 @@ func TestMakePodSpec(t *testing.T) {
 		rev  *v1.Revision
 		lc   *logging.Config
 		tc   *tracingconfig.Config
+		nc   *network.Config
 		oc   *metrics.ObservabilityConfig
 		ac   *autoscalerconfig.Config
 		cc   *deployment.Config
@@ -422,6 +429,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -466,6 +474,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -506,6 +515,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -531,6 +541,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -556,6 +567,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -576,6 +588,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -601,6 +614,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -621,6 +635,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -647,6 +662,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -680,6 +696,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -706,6 +723,7 @@ func TestMakePodSpec(t *testing.T) {
 			}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{
 			EnableVarLogCollection: true,
 		},
@@ -733,6 +751,7 @@ func TestMakePodSpec(t *testing.T) {
 		}),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{
 			EnableGracefulScaledown: true,
@@ -778,6 +797,7 @@ func TestMakePodSpec(t *testing.T) {
 		),
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -821,7 +841,7 @@ func TestMakePodSpec(t *testing.T) {
 			quantityComparer := cmp.Comparer(func(x, y resource.Quantity) bool {
 				return x.Cmp(y) == 0
 			})
-			got, err := makePodSpec(test.rev, test.lc, test.tc, test.oc, test.ac, test.cc)
+			got, err := makePodSpec(test.rev, test.lc, test.tc, test.nc, test.oc, test.ac, test.cc)
 			if err != nil {
 				t.Fatal("makePodSpec returned errror")
 			}
@@ -835,7 +855,7 @@ func TestMakePodSpec(t *testing.T) {
 				return x.Cmp(y) == 0
 			})
 
-			got, err := makePodSpec(test.rev, test.lc, test.tc, test.oc, test.ac, test.cc)
+			got, err := makePodSpec(test.rev, test.lc, test.tc, test.nc, test.oc, test.ac, test.cc)
 			if err != nil {
 				t.Fatal("makePodSpec returned errror")
 			}
@@ -1004,7 +1024,7 @@ func TestMakeDeployment(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Tested above so that we can rely on it here for brevity.
-			podSpec, err := makePodSpec(test.rev, test.lc, test.tc, test.oc, test.ac, test.cc)
+			podSpec, err := makePodSpec(test.rev, test.lc, test.tc, test.nc, test.oc, test.ac, test.cc)
 			if err != nil {
 				t.Fatal("makePodSpec returned errror")
 			}

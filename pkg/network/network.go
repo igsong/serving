@@ -139,8 +139,12 @@ const (
 	// Therefore, by comparing TagHeaderName and TagRefHeaderName,
 	// the request is delivered correctly or gone to wrong place.
 	//
-	// To specify the default route, "" will be used as a placeholder.
+	// To specify the default route, DefaultTargetHeaderValue is used.
 	TagRefHeaderName = "Knative-Serving-Tag-Ref"
+
+	// DefaultTargetHeaderValue is a value standing for default target route.
+	// It is used with TagRefHeaderName together.
+	DefaultTargetHeaderValue = "\"\""
 
 	// TagHeaderBasedRoutingKey is the name of the configuration entry
 	// that specifies enabling tag header based routing or not.
@@ -195,6 +199,9 @@ type Config struct {
 
 	// TagHeaderBasedRouting specifies if TagHeaderBasedRouting is enabled or not.
 	TagHeaderBasedRouting bool
+
+	// TagHeaderBasedRouting specifies if a request with undefined tag is fallthough to default route or not.
+	TagHeaderBasedRoutingFallbackToDefault bool
 }
 
 // HTTPProtocol indicates a type of HTTP endpoint behavior

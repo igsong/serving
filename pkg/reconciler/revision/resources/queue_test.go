@@ -80,6 +80,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		rev  *v1.Revision
 		lc   *logging.Config
 		tc   *tracingconfig.Config
+		nc   *network.Config
 		oc   *metrics.ObservabilityConfig
 		ac   *autoscalerconfig.Config
 		cc   *deployment.Config
@@ -99,6 +100,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -137,6 +139,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -174,6 +177,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -213,6 +217,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -251,6 +256,7 @@ func TestMakeQueueContainer(t *testing.T) {
 			},
 		},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -285,6 +291,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -315,6 +322,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{
 			RequestLogTemplate:    "test template",
 			EnableProbeRequestLog: true,
@@ -350,6 +358,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{
 			RequestMetricsBackend: "prometheus",
 		},
@@ -383,6 +392,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{EnableProfiling: true},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{},
@@ -411,7 +421,7 @@ func TestMakeQueueContainer(t *testing.T) {
 					}},
 				}
 			}
-			got, err := makeQueueContainer(test.rev, test.lc, test.tc, test.oc, test.ac, test.cc)
+			got, err := makeQueueContainer(test.rev, test.lc, test.tc, test.nc, test.oc, test.ac, test.cc)
 
 			if err != nil {
 				t.Fatal("makeQueueContainer returned error")
@@ -436,6 +446,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 		rev  *v1.Revision
 		lc   *logging.Config
 		tc   *tracingconfig.Config
+		nc   *network.Config
 		oc   *metrics.ObservabilityConfig
 		ac   *autoscalerconfig.Config
 		cc   *deployment.Config
@@ -473,6 +484,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -531,6 +543,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -586,6 +599,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -639,6 +653,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 		},
 		lc: &logging.Config{},
 		tc: &tracingconfig.Config{},
+		nc: &network.Config{},
 		oc: &metrics.ObservabilityConfig{},
 		ac: &autoscalerconfig.Config{},
 		cc: &deployment.Config{
@@ -666,7 +681,7 @@ func TestMakeQueueContainerWithPercentageAnnotation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := makeQueueContainer(test.rev, test.lc, test.tc, test.oc, test.ac, test.cc)
+			got, err := makeQueueContainer(test.rev, test.lc, test.tc, test.nc, test.oc, test.ac, test.cc)
 			if err != nil {
 				t.Fatal("makeQueueContainer returned error")
 			}
@@ -746,6 +761,7 @@ func TestProbeGenerationHTTPDefaults(t *testing.T) {
 
 	lc := &logging.Config{}
 	tc := &tracingconfig.Config{}
+	nc := &network.Config{}
 	oc := &metrics.ObservabilityConfig{}
 	ac := &autoscalerconfig.Config{}
 	cc := &deployment.Config{}
@@ -770,7 +786,7 @@ func TestProbeGenerationHTTPDefaults(t *testing.T) {
 		SecurityContext: queueSecurityContext,
 	}
 
-	got, err := makeQueueContainer(rev, lc, tc, oc, ac, cc)
+	got, err := makeQueueContainer(rev, lc, tc, nc, oc, ac, cc)
 	if err != nil {
 		t.Fatal("makeQueueContainer returned error")
 	}
@@ -838,6 +854,7 @@ func TestProbeGenerationHTTP(t *testing.T) {
 
 	lc := &logging.Config{}
 	tc := &tracingconfig.Config{}
+	nc := &network.Config{}
 	oc := &metrics.ObservabilityConfig{}
 	ac := &autoscalerconfig.Config{}
 	cc := &deployment.Config{}
@@ -863,7 +880,7 @@ func TestProbeGenerationHTTP(t *testing.T) {
 		SecurityContext: queueSecurityContext,
 	}
 
-	got, err := makeQueueContainer(rev, lc, tc, oc, ac, cc)
+	got, err := makeQueueContainer(rev, lc, tc, nc, oc, ac, cc)
 	if err != nil {
 		t.Fatal("makeQueueContainer returned error")
 	}
@@ -1037,6 +1054,7 @@ func TestTCPProbeGeneration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			lc := &logging.Config{}
 			tc := &tracingconfig.Config{}
+			nc := &network.Config{}
 			oc := &metrics.ObservabilityConfig{}
 			ac := &autoscalerconfig.Config{}
 			cc := &deployment.Config{}
@@ -1057,7 +1075,7 @@ func TestTCPProbeGeneration(t *testing.T) {
 				Value: string(wantProbeJSON),
 			})
 
-			got, err := makeQueueContainer(testRev, lc, tc, oc, ac, cc)
+			got, err := makeQueueContainer(testRev, lc, tc, nc, oc, ac, cc)
 			if err != nil {
 				t.Fatal("makeQueueContainer returned error")
 			}
@@ -1071,32 +1089,34 @@ func TestTCPProbeGeneration(t *testing.T) {
 }
 
 var defaultEnv = map[string]string{
-	"SERVING_NAMESPACE":                     "foo",
-	"SERVING_SERVICE":                       "",
-	"SERVING_CONFIGURATION":                 "",
-	"SERVING_REVISION":                      "bar",
-	"CONTAINER_CONCURRENCY":                 "1",
-	"REVISION_TIMEOUT_SECONDS":              "45",
-	"SERVING_LOGGING_CONFIG":                "",
-	"SERVING_LOGGING_LEVEL":                 "",
-	"TRACING_CONFIG_BACKEND":                "",
-	"TRACING_CONFIG_ZIPKIN_ENDPOINT":        "",
-	"TRACING_CONFIG_STACKDRIVER_PROJECT_ID": "",
-	"TRACING_CONFIG_SAMPLE_RATE":            "0.000000",
-	"TRACING_CONFIG_DEBUG":                  "false",
-	"SERVING_REQUEST_LOG_TEMPLATE":          "",
-	"SERVING_REQUEST_METRICS_BACKEND":       "",
-	"USER_PORT":                             strconv.Itoa(v1.DefaultUserPort),
-	"SYSTEM_NAMESPACE":                      system.Namespace(),
-	"METRICS_DOMAIN":                        metrics.Domain(),
-	"QUEUE_SERVING_PORT":                    "8012",
-	"USER_CONTAINER_NAME":                   containerName,
-	"ENABLE_VAR_LOG_COLLECTION":             "false",
-	"VAR_LOG_VOLUME_NAME":                   varLogVolumeName,
-	"INTERNAL_VOLUME_PATH":                  internalVolumePath,
-	"DOWNWARD_API_LABELS_PATH":              fmt.Sprintf("%s/%s", podInfoVolumePath, metadataLabelsPath),
-	"ENABLE_PROFILING":                      "false",
-	"SERVING_ENABLE_PROBE_REQUEST_LOG":      "false",
+	"SERVING_NAMESPACE":                            "foo",
+	"SERVING_SERVICE":                              "",
+	"SERVING_CONFIGURATION":                        "",
+	"SERVING_REVISION":                             "bar",
+	"CONTAINER_CONCURRENCY":                        "1",
+	"REVISION_TIMEOUT_SECONDS":                     "45",
+	"SERVING_LOGGING_CONFIG":                       "",
+	"SERVING_LOGGING_LEVEL":                        "",
+	"TRACING_CONFIG_BACKEND":                       "",
+	"TRACING_CONFIG_ZIPKIN_ENDPOINT":               "",
+	"TRACING_CONFIG_STACKDRIVER_PROJECT_ID":        "",
+	"TRACING_CONFIG_SAMPLE_RATE":                   "0.000000",
+	"TRACING_CONFIG_DEBUG":                         "false",
+	"SERVING_REQUEST_LOG_TEMPLATE":                 "",
+	"SERVING_REQUEST_METRICS_BACKEND":              "",
+	"USER_PORT":                                    strconv.Itoa(v1.DefaultUserPort),
+	"SYSTEM_NAMESPACE":                             system.Namespace(),
+	"METRICS_DOMAIN":                               metrics.Domain(),
+	"QUEUE_SERVING_PORT":                           "8012",
+	"USER_CONTAINER_NAME":                          containerName,
+	"ENABLE_VAR_LOG_COLLECTION":                    "false",
+	"VAR_LOG_VOLUME_NAME":                          varLogVolumeName,
+	"INTERNAL_VOLUME_PATH":                         internalVolumePath,
+	"DOWNWARD_API_LABELS_PATH":                     fmt.Sprintf("%s/%s", podInfoVolumePath, metadataLabelsPath),
+	"ENABLE_PROFILING":                             "false",
+	"SERVING_ENABLE_PROBE_REQUEST_LOG":             "false",
+	"ENABLE_TAG_BASED_ROUTING":                     "false",
+	"ENABLE_TAG_BASED_ROUTING_FALLBACK_TO_DEFAULT": "false",
 }
 
 func probeJSON(container *corev1.Container) string {

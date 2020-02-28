@@ -88,7 +88,8 @@ func setTagRefName(path *v1alpha1.HTTPIngressPath, name string) {
 		path.AppendHeaders = make(map[string]string)
 	}
 	if name == traffic.DefaultTarget {
-		path.AppendHeaders[network.TagRefHeaderName] = "\"\""
+		// Give an pseudo empty string to DefaultTarget
+		path.AppendHeaders[network.TagRefHeaderName] = network.DefaultTargetHeaderValue
 	} else {
 		path.AppendHeaders[network.TagRefHeaderName] = name
 	}

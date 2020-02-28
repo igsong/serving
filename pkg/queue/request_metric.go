@@ -60,6 +60,10 @@ var (
 		stats.UnitDimensionless)
 )
 
+const (
+	defaultTargetName = "__DEFAULT__"
+)
+
 type requestMetricsHandler struct {
 	next                   http.Handler
 	statsCtx               context.Context
@@ -78,6 +82,9 @@ func NewRequestMetricsHandler(next http.Handler,
 	ns, service, config, rev, pod string, enablesTagBasedRouting bool) (http.Handler, error) {
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
+	if enablesTagBasedRouting {
+		keys = append(keys, metrics.TrafficTagKey)
+	}
 	if err := view.Register(
 		&view.View{
 			Description: "The number of requests that are routed to queue-proxy",
@@ -120,16 +127,17 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		// If ServeHTTP panics, recover, record the failure and panic again.
 		err := recover()
 		latency := time.Since(startTime)
+		ctx := h.statsCtx
+		if h.enablesTagBasedRouting {
+			ctx = metrics.AugmentWithTrafficTag(ctx, GetTagRefName(r))
+		}
 		if err != nil {
-			ctx := metrics.AugmentWithResponse(h.statsCtx, http.StatusInternalServerError)
+			ctx = metrics.AugmentWithResponse(ctx, http.StatusInternalServerError)
 			pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 				responseTimeInMsecM.M(float64(latency.Milliseconds())))
 			panic(err)
 		}
-		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
-		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderName))
-		}
+		ctx = metrics.AugmentWithResponse(ctx, rr.ResponseCode)
 		pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 			responseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()
@@ -142,6 +150,9 @@ func NewAppRequestMetricsHandler(next http.Handler, b *Breaker,
 	ns, service, config, rev, pod string, enablesTagBasedRouting bool) (http.Handler, error) {
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
+	if enablesTagBasedRouting {
+		keys = append(keys, metrics.TrafficTagKey)
+	}
 	if err := view.Register(&view.View{
 		Description: "The number of requests that are routed to queue-proxy",
 		Measure:     appRequestCountM,
@@ -190,18 +201,30 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		// If ServeHTTP panics, recover, record the failure and panic again.
 		err := recover()
 		latency := time.Since(startTime)
+		ctx := h.statsCtx
+		if h.enablesTagBasedRouting {
+			ctx = metrics.AugmentWithTrafficTag(ctx, GetTagRefName(r))
+		}
 		if err != nil {
-			ctx := metrics.AugmentWithResponse(h.statsCtx, http.StatusInternalServerError)
+			ctx = metrics.AugmentWithResponse(ctx, http.StatusInternalServerError)
 			pkgmetrics.RecordBatch(ctx, appRequestCountM.M(1),
 				appResponseTimeInMsecM.M(float64(latency.Milliseconds())))
 			panic(err)
 		}
-		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
-		if h.enablesTagBasedRouting {
-			ctx = metrics.AugmentWithRouteTag(ctx, r.Header.Get(network.TagHeaderName))
-		}
+
+		ctx = metrics.AugmentWithResponse(ctx, rr.ResponseCode)
 		pkgmetrics.RecordBatch(ctx, appRequestCountM.M(1),
 			appResponseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()
 	h.next.ServeHTTP(rr, r)
+}
+
+// GetTagRefName returns a value of TagRefHeader
+// When it is the default target route, it returns defaultTargetName
+func GetTagRefName(r *http.Request) string {
+	name := r.Header.Get(network.TagRefHeaderName)
+	if name == network.DefaultTargetHeaderValue {
+		return defaultTargetName
+	}
+	return name
 }

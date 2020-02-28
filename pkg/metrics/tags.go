@@ -135,11 +135,11 @@ func AugmentWithResponse(baseCtx context.Context, responseCode int) context.Cont
 	return ctx
 }
 
-// AugmentWithRouteTag augments the given context with the corresponding route tag.
-func AugmentWithRouteTag(baseCtx context.Context, routeTag string) context.Context {
+// AugmentWithTrafficTag augments the given context with the corresponding traffic tag.
+func AugmentWithTrafficTag(baseCtx context.Context, trafficTag string) context.Context {
 	ctx, _ := tag.New(
 		baseCtx,
-		tag.Upsert(RouteTagKey, routeTag))
+		tag.Upsert(TrafficTagKey, trafficTag))
 	return ctx
 }
 

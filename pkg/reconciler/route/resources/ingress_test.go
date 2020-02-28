@@ -367,6 +367,9 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 						"Knative-Serving-Namespace": ns,
 					},
 				}},
+				AppendHeaders: map[string]string{
+					network.TagRefHeaderName: "\"\"",
+				},
 			}},
 		},
 		Visibility: netv1alpha1.IngressVisibilityClusterLocal,
@@ -407,6 +410,9 @@ func TestMakeIngressSpec_CorrectRulesWithTagBasedRouting(t *testing.T) {
 						"Knative-Serving-Namespace": ns,
 					},
 				}},
+				AppendHeaders: map[string]string{
+					network.TagRefHeaderName: "\"\"",
+				},
 			}},
 		},
 		Visibility: netv1alpha1.IngressVisibilityExternalIP,

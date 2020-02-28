@@ -1054,7 +1054,7 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
 					Headers: map[string]string{
-						"Knative-Serving-Tag": "^bar$",
+						network.TagHeaderName: "^bar$",
 					},
 					Splits: []v1alpha1.IngressBackendSplit{
 						{
@@ -1071,11 +1071,11 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag-Delivered-To": "bar",
+						network.TagRefHeaderName: "bar",
 					},
 				}, {
 					Headers: map[string]string{
-						"Knative-Serving-Tag": "^foo$",
+						network.TagHeaderName: "^foo$",
 					},
 					Splits: []v1alpha1.IngressBackendSplit{
 						{
@@ -1092,7 +1092,7 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag-Delivered-To": "foo",
+						network.TagRefHeaderName: "foo",
 					},
 				}, {
 					Splits: []netv1alpha1.IngressBackendSplit{{
@@ -1118,6 +1118,9 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 							"Knative-Serving-Namespace": testNamespace,
 						},
 					}},
+					AppendHeaders: map[string]string{
+						network.TagRefHeaderName: "\"\"",
+					},
 				}},
 			},
 			Visibility: netv1alpha1.IngressVisibilityClusterLocal,
@@ -1128,7 +1131,7 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 			HTTP: &netv1alpha1.HTTPIngressRuleValue{
 				Paths: []netv1alpha1.HTTPIngressPath{{
 					Headers: map[string]string{
-						"Knative-Serving-Tag": "^bar$",
+						network.TagHeaderName: "^bar$",
 					},
 					Splits: []v1alpha1.IngressBackendSplit{
 						{
@@ -1145,11 +1148,11 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag-Delivered-To": "bar",
+						network.TagRefHeaderName: "bar",
 					},
 				}, {
 					Headers: map[string]string{
-						"Knative-Serving-Tag": "^foo$",
+						network.TagHeaderName: "^foo$",
 					},
 					Splits: []v1alpha1.IngressBackendSplit{
 						{
@@ -1166,7 +1169,7 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag-Delivered-To": "foo",
+						network.TagRefHeaderName: "foo",
 					},
 				}, {
 					Splits: []netv1alpha1.IngressBackendSplit{{
@@ -1192,6 +1195,9 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 							"Knative-Serving-Namespace": testNamespace,
 						},
 					}},
+					AppendHeaders: map[string]string{
+						network.TagRefHeaderName: "\"\"",
+					},
 				}},
 			},
 			Visibility: netv1alpha1.IngressVisibilityExternalIP,
@@ -1214,8 +1220,8 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					}},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag":              "bar",
-						"Knative-Serving-Tag-Delivered-To": "bar",
+						network.TagHeaderName:    "bar",
+						network.TagRefHeaderName: "bar",
 					},
 				}},
 			},
@@ -1239,8 +1245,8 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					}},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag":              "bar",
-						"Knative-Serving-Tag-Delivered-To": "bar",
+						network.TagHeaderName:    "bar",
+						network.TagRefHeaderName: "bar",
 					},
 				}},
 			},
@@ -1264,8 +1270,8 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					}},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag":              "foo",
-						"Knative-Serving-Tag-Delivered-To": "foo",
+						network.TagHeaderName:    "foo",
+						network.TagRefHeaderName: "foo",
 					},
 				}},
 			},
@@ -1289,8 +1295,8 @@ func TestCreateRouteWithNamedTargetsAndTagBasedRouting(t *testing.T) {
 						},
 					}},
 					AppendHeaders: map[string]string{
-						"Knative-Serving-Tag":              "foo",
-						"Knative-Serving-Tag-Delivered-To": "foo",
+						network.TagHeaderName:    "foo",
+						network.TagRefHeaderName: "foo",
 					},
 				}},
 			},

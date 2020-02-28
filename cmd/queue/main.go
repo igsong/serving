@@ -211,27 +211,27 @@ func getUniqueHeader(r *http.Request, headerName string) (string, error) {
 func tagBasedRoutingHandler(next http.Handler, env config) http.Handler {
 	// To prevent use of appended
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestedTag, err := getUniqueHeader(r, network.TagHeaderName)
+		tag, err := getUniqueHeader(r, network.TagHeaderName)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		deliveredTag, err := getUniqueHeader(r, network.TagRefHeaderName)
+		tagRef, err := getUniqueHeader(r, network.TagRefHeaderName)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if !env.EnableTagBasedRoutingFallbackToDefault && len(requestedTag) > 0 && requestedTag != deliveredTag {
+		defer func() {
+			w.Header().Add(network.TagRefHeaderName, tagRef)
+		}()
+
+		if !env.EnableTagBasedRoutingFallbackToDefault && len(tag) > 0 && tag != tagRef {
 			// If a request has different values on requestedTag and deliveredTag, it is an invalid request.
 			// Since such case happen when a user make a request with non-existing tag, here, NotFound is returned.
 			http.Error(w, "Tag Not Found", http.StatusNotFound)
 			return
 		}
-
-		// defer func() {
-		// 	w.Header().Add()
-		// }()
 
 		next.ServeHTTP(w, r)
 	})

@@ -297,6 +297,9 @@ func makeQueueContainer(rev *v1.Revision, loggingConfig *logging.Config, tracing
 			Name:  "SERVING_REQUEST_METRICS_BACKEND",
 			Value: observabilityConfig.RequestMetricsBackend,
 		}, {
+			Name:  "ENABLE_TAG_ON_REQUEST_METRICS",
+			Value: strconv.FormatBool(observabilityConfig.EnableTagLabelOnRequestMetrics),
+		}, {
 			Name:  "TRACING_CONFIG_BACKEND",
 			Value: string(tracingConfig.Backend),
 		}, {

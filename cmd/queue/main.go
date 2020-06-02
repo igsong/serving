@@ -116,6 +116,9 @@ type config struct {
 	TracingConfigSampleRate           float64                   `split_words:"true"` // optional
 	TracingConfigZipkinEndpoint       string                    `split_words:"true"` // optional
 	TracingConfigStackdriverProjectID string                    `split_words:"true"` // optional
+
+	// UseTagOnRequestMetrics configuration
+	UseTagOnRequestMetrics bool `split_words:"true"` // optional
 }
 
 // Make handler a closure for testing.
@@ -572,7 +575,7 @@ func pushRequestLogHandler(currentHandler http.Handler, env config) http.Handler
 
 func requestMetricsHandler(currentHandler http.Handler, env config) http.Handler {
 	h, err := queue.NewRequestMetricsHandler(currentHandler, env.ServingNamespace,
-		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod)
+		env.ServingService, env.ServingConfiguration, env.ServingRevision, env.ServingPod, env.UseTagOnRequestMetrics)
 	if err != nil {
 		logger.Errorw("Error setting up request metrics reporter. Request metrics will be unavailable.", zap.Error(err))
 		return currentHandler

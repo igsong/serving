@@ -134,6 +134,9 @@ var (
 			Name:  "SERVING_REQUEST_METRICS_BACKEND",
 			Value: "",
 		}, {
+			Name:  "ENABLE_TAG_ON_REQUEST_METRICS",
+			Value: "false",
+		}, {
 			Name:  "TRACING_CONFIG_BACKEND",
 			Value: "",
 		}, {

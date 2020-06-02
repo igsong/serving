@@ -31,7 +31,7 @@ import (
 const targetURI = "http://example.com"
 
 func TestNewRequestMetricsHandlerFailure(t *testing.T) {
-	if _, err := NewRequestMetricsHandler(nil /*next*/, "shøüld fail", "a", "b", "c", "d"); err == nil {
+	if _, err := NewRequestMetricsHandler(nil /*next*/, "shøüld fail", "a", "b", "c", "d", false); err == nil {
 		t.Error("Should get error when StatsReporter is empty")
 	}
 }
@@ -39,7 +39,7 @@ func TestNewRequestMetricsHandlerFailure(t *testing.T) {
 func TestRequestMetricsHandler(t *testing.T) {
 	defer reset()
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod")
+	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod", false)
 	if err != nil {
 		t.Fatal("Failed to create handler:", err)
 	}
@@ -69,6 +69,79 @@ func TestRequestMetricsHandler(t *testing.T) {
 	metricstest.CheckDistributionCount(t, "request_latencies", wantTags, 1)
 }
 
+func TestRequestMetricsHandlerWithEnablingTagOnRequestMetrics(t *testing.T) {
+	defer reset()
+	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod", true)
+	if err != nil {
+		t.Fatalf("Failed to create handler: %v", err)
+	}
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, targetURI, bytes.NewBufferString("test"))
+	req.Header.Set(network.TagHeaderName, "test-tag")
+
+	handler.ServeHTTP(resp, req)
+
+	wantTags := map[string]string{
+		metricskey.LabelNamespaceName:     "ns",
+		metricskey.LabelRevisionName:      "rev",
+		metricskey.LabelServiceName:       "svc",
+		metricskey.LabelConfigurationName: "cfg",
+		metricskey.PodName:                "pod",
+		metricskey.ContainerName:          "queue-proxy",
+		metricskey.LabelResponseCode:      "200",
+		metricskey.LabelResponseCodeClass: "2xx",
+		"tag":                             "test-tag",
+	}
+
+	metricstest.CheckCountData(t, "request_count", wantTags, 1)
+	metricstest.CheckDistributionCount(t, "request_latencies", wantTags, 1) // Dummy latency range.
+
+	// A probe request should not be recorded.
+	req.Header.Set(network.ProbeHeaderName, "activator")
+	handler.ServeHTTP(resp, req)
+	metricstest.CheckCountData(t, "request_count", wantTags, 1)
+	metricstest.CheckDistributionCount(t, "request_latencies", wantTags, 1)
+}
+
+func TestRequestMetricsHandlerWithEnablingTagOnRequestMetricsForUndefinedTag(t *testing.T) {
+	defer reset()
+	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod", true)
+	if err != nil {
+		t.Fatalf("Failed to create handler: %v", err)
+	}
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, targetURI, bytes.NewBufferString("test"))
+	req.Header.Set(network.TagHeaderName, "test-tag")
+	req.Header.Set(network.DefaultRouteHeaderName, "true")
+
+	handler.ServeHTTP(resp, req)
+
+	wantTags := map[string]string{
+		metricskey.LabelNamespaceName:     "ns",
+		metricskey.LabelRevisionName:      "rev",
+		metricskey.LabelServiceName:       "svc",
+		metricskey.LabelConfigurationName: "cfg",
+		metricskey.PodName:                "pod",
+		metricskey.ContainerName:          "queue-proxy",
+		metricskey.LabelResponseCode:      "200",
+		metricskey.LabelResponseCodeClass: "2xx",
+		"tag":                             "undefined",
+	}
+
+	metricstest.CheckCountData(t, "request_count", wantTags, 1)
+	metricstest.CheckDistributionCount(t, "request_latencies", wantTags, 1) // Dummy latency range.
+
+	// A probe request should not be recorded.
+	req.Header.Set(network.ProbeHeaderName, "activator")
+	handler.ServeHTTP(resp, req)
+	metricstest.CheckCountData(t, "request_count", wantTags, 1)
+	metricstest.CheckDistributionCount(t, "request_latencies", wantTags, 1)
+}
+
 func reset() {
 	metricstest.Unregister(
 		requestCountM.Name(), appRequestCountM.Name(),
@@ -81,7 +154,7 @@ func TestRequestMetricsHandlerPanickingHandler(t *testing.T) {
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("no!")
 	})
-	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod")
+	handler, err := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod", false)
 	if err != nil {
 		t.Fatal("Failed to create handler:", err)
 	}
@@ -207,7 +280,7 @@ func TestAppRequestMetricsHandler(t *testing.T) {
 
 func BenchmarkRequestMetricsHandler(b *testing.B) {
 	baseHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	handler, _ := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod")
+	handler, _ := NewRequestMetricsHandler(baseHandler, "ns", "svc", "cfg", "rev", "pod", false)
 	req := httptest.NewRequest(http.MethodPost, "http://example.com", nil)
 
 	b.Run("sequential", func(b *testing.B) {

@@ -73,6 +73,7 @@ func TestMakeQueueContainer(t *testing.T) {
 		name string
 		rev  *v1.Revision
 		lc   logging.Config
+		nc   network.Config
 		oc   metrics.ObservabilityConfig
 		cc   deployment.Config
 		want corev1.Container
@@ -775,6 +776,7 @@ var defaultEnv = map[string]string{
 	"DOWNWARD_API_LABELS_PATH":              fmt.Sprintf("%s/%s", podInfoVolumePath, metadataLabelsPath),
 	"ENABLE_PROFILING":                      "false",
 	"SERVING_ENABLE_PROBE_REQUEST_LOG":      "false",
+	"ENABLE_TAG_ON_REQUEST_METRICS":         "false",
 }
 
 func probeJSON(container *corev1.Container) string {

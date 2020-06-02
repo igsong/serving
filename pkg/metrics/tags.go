@@ -135,6 +135,14 @@ func AugmentWithResponse(baseCtx context.Context, responseCode int) context.Cont
 	return ctx
 }
 
+// AugmentWithTagName augments the given context with the corresponding tag name
+func AugmentWithTagName(baseCtx context.Context, tagName string) context.Context {
+	ctx, _ := tag.New(
+		baseCtx,
+		tag.Upsert(TagNameKey, tagName))
+	return ctx
+}
+
 // responseCodeClass converts response code to a string of response code class.
 // e.g. The response code class is "5xx" for response code 503.
 func responseCodeClass(responseCode int) string {

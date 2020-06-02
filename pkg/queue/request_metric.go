@@ -60,6 +60,11 @@ var (
 		stats.UnitDimensionless)
 )
 
+const (
+	defaultTargetName   = "default"
+	undefinedTargetName = "undefined"
+)
+
 type requestMetricsHandler struct {
 	next     http.Handler
 	statsCtx context.Context
@@ -71,11 +76,18 @@ type appRequestMetricsHandler struct {
 	breaker  *Breaker
 }
 
+type enableTagOnRequestMetricsKeyType struct{}
+
+var enableTagOnRequestMetricsKey = enableTagOnRequestMetricsKeyType{}
+
 // NewRequestMetricsHandler creates an http.Handler that emits request metrics.
 func NewRequestMetricsHandler(next http.Handler,
-	ns, service, config, rev, pod string) (http.Handler, error) {
+	ns, service, config, rev, pod string, enableTagOnRequestMetrics bool) (http.Handler, error) {
 	keys := append(metrics.CommonRevisionKeys, metrics.PodTagKey,
 		metrics.ContainerTagKey, metrics.ResponseCodeKey, metrics.ResponseCodeClassKey)
+	if enableTagOnRequestMetrics {
+		keys = append(keys, metrics.TagNameKey)
+	}
 	if err := view.Register(
 		&view.View{
 			Description: "The number of requests that are routed to queue-proxy",
@@ -98,6 +110,8 @@ func NewRequestMetricsHandler(next http.Handler,
 		return nil, err
 	}
 
+	ctx = context.WithValue(ctx, enableTagOnRequestMetricsKey, enableTagOnRequestMetrics)
+
 	return &requestMetricsHandler{
 		next:     next,
 		statsCtx: ctx,
@@ -117,13 +131,17 @@ func (h *requestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		// If ServeHTTP panics, recover, record the failure and panic again.
 		err := recover()
 		latency := time.Since(startTime)
+		ctx := h.statsCtx
+		if ctx.Value(enableTagOnRequestMetricsKey).(bool) {
+			ctx = metrics.AugmentWithTagName(ctx, GetTagName(r))
+		}
 		if err != nil {
-			ctx := metrics.AugmentWithResponse(h.statsCtx, http.StatusInternalServerError)
+			ctx = metrics.AugmentWithResponse(ctx, http.StatusInternalServerError)
 			pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 				responseTimeInMsecM.M(float64(latency.Milliseconds())))
 			panic(err)
 		}
-		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
+		ctx = metrics.AugmentWithResponse(ctx, rr.ResponseCode)
 		pkgmetrics.RecordBatch(ctx, requestCountM.M(1),
 			responseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()
@@ -189,9 +207,26 @@ func (h *appRequestMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 				appResponseTimeInMsecM.M(float64(latency.Milliseconds())))
 			panic(err)
 		}
+
 		ctx := metrics.AugmentWithResponse(h.statsCtx, rr.ResponseCode)
 		pkgmetrics.RecordBatch(ctx, appRequestCountM.M(1),
 			appResponseTimeInMsecM.M(float64(latency.Milliseconds())))
 	}()
 	h.next.ServeHTTP(rr, r)
+}
+
+// GetTagName returns the value of the tag header
+// If there is no the tag header or its value is empty string,
+// it returns "default".
+// If there is a tag header with not-empty string and the request is routed via the default route,
+// returns "undefined".
+// Otherwise, returns the value of the tag header.
+func GetTagName(r *http.Request) string {
+	name := r.Header.Get(network.TagHeaderName)
+	if name == "" {
+		return defaultTargetName
+	} else if isDefaultRoute := r.Header.Get(network.DefaultRouteHeaderName); isDefaultRoute == "true" {
+		return undefinedTargetName
+	}
+	return name
 }

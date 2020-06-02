@@ -286,7 +286,7 @@ metadata:
   name: networking-istio
   namespace: knative-serving
   labels:
-    serving.knative.dev/release: "v20200531-cb895b4"
+    serving.knative.dev/release: "v20200531-cb895b4-private"
     networking.knative.dev/ingress-provider: istio
 spec:
   selector:
@@ -309,7 +309,7 @@ spec:
       - name: networking-istio
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: gcr.io/knative-nightly/knative.dev/net-istio/cmd/controller@sha256:7b787833cbd5706ce9fd58f802b6b622608e9bbf8c2e6593579ae4081b6c32d3
+        image: arena.azurecr.io/knative/controller-7b82f356e674cfa4acc296344eb87e89@sha256:9a08d6491356a69b69f9ede7855657a83040b8495606342570279aee1f3ed030
         resources:
           requests:
             cpu: 30m
@@ -361,7 +361,7 @@ metadata:
   name: istio-webhook
   namespace: knative-serving
   labels:
-    serving.knative.dev/release: "v20200531-cb895b4"
+    serving.knative.dev/release: "v20200531-cb895b4-private"
     networking.knative.dev/ingress-provider: istio
 spec:
   selector:
@@ -382,7 +382,7 @@ spec:
       - name: webhook
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: gcr.io/knative-nightly/knative.dev/net-istio/cmd/webhook@sha256:8511f6b143a2b804c9623e6f07ba2b468e778aba9c74a55782fd32de373703a2
+        image: arena.azurecr.io/knative/webhook-10f01925599200cc26bc8dd53cba7a95@sha256:828e96ee8b11ab1737ee672799c3e472d3c4d18e2029bc457616726c8a79376f
         resources:
           requests:
             cpu: 20m
